@@ -1,0 +1,79 @@
+--Creating a table in pgAdmin4 to import the Yellevate.csv dataset
+
+CREATE TABLE IF NOT EXISTS yellevate_invoices (	
+	country VARCHAR,
+	customer_ID VARCHAR,
+	invoice_number NUMERIC,
+	invoice_date DATE,
+	due_date DATE,
+	invoice_amount_usd NUMERIC,
+	disputed NUMERIC,
+	dispute_lost NUMERIC,
+	settled_date DATE,
+	days_to_settle INTEGER,
+	days_late INTEGER
+);	
+
+--Checking the contents of the the table to see the data inside
+
+SELECT * FROM yellevate_invoices;
+
+--In the data dictionary, customer_ID & invoice_number have both unique values so we need to check for any duplicates
+
+SELECT customer_id, invoice_number, COUNT(*) FROM yellevate_invoices
+GROUP BY customer_id, invoice_number
+HAVING COUNT (*) > 1;
+
+--For data analysis goal 1, we need to compute for the processing time in which invoices are settled (average # of days rounded to a whole number)
+--Computing the average number of days where invoices are settled by country
+SELECT country, ROUND(AVG(days_to_settle)) AS average_days_to_settle FROM yellevate_invoices
+GROUP BY country;
+
+-Getting the average number of days where invoices are settled
+SELECT ROUND(AVG(days_to_settle)) AS days_settled FROM yellevate_invoices;
+
+--For data analysis goal 2, we need to compute for the processing time for the company to settle disputes (average # of days rounded to a whole number)
+--Computing the average number of days to settle disputes by country
+SELECT country, ROUND(AVG(days_to_settle)) AS settle_dispute_average_day 
+FROM yellevate_invoices
+WHERE disputed = 1
+GROUP BY country;
+
+--Computing the average number of days to settle disputes
+SELECT ROUND (AVG(days_to_settle)) AS days_to_settle FROM yellevate_invoices
+WHERE disputed = 1;
+
+--For data analysis goal 3, we need to compute for the percentage of disputes received by the company that were lost (within two decimal places)
+
+SELECT country, ROUND (AVG(dispute_lost) * 100, 2) AS percentage_lost_disputes FROM yellevate_invoices
+GROUP BY country, disputed
+HAVING disputed = 1
+ORDER BY percentage_lost_disputes DESC;
+
+SELECT ROUND (AVG(dispute_lost) * 100, 2) AS percentage_lost_disputes FROM yellevate_invoices
+WHERE disputed = 1;
+
+--For data analysis goal 4, we need to compute for the percentage of revenue lost from disputes (within two decimal places)
+
+SELECT country, ROUND(SUM(invoice_amount_usd) / (SELECT SUM(invoice_amount_usd)
+FROM yellevate_invoices) * 100, 2) FROM yellevate_invoices
+GROUP BY country, dispute_lost
+HAVING dispute_lost = 1;
+
+SELECT ROUND(SUM(invoice_amount_usd) / (SELECT SUM(invoice_amount_usd)
+FROM yellevate_invoices) * 100, 2) FROM yellevate_invoices
+GROUP BY dispute_lost
+HAVING dispute_lost = 1;
+
+--For data analysis goal 5, we need to find out in which country where the company reached the highest losses from disputes
+
+SELECT country, SUM(invoice_amount_usd) AS invoice_amount_lost_in_disputes FROM yellevate_invoices
+GROUP BY country, dispute_lost
+HAVING dispute_lost > 0 
+ORDER BY SUM(invoice_amount_usd) DESC;
+
+
+
+
+
+
